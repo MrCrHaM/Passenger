@@ -1,8 +1,10 @@
+import numpy
+
 def e_neighbour_graph(img, e):
-    array = np.array(img)
-    rowN = np.shape(array)[0]
-    colN = np.shape(array)[1]
-    result = np.zeros((rowN * colN, rowN * colN))
+    array = numpy.array(img)
+    rowN = numpy.shape(array)[0]
+    colN = numpy.shape(array)[1]
+    result = numpy.zeros((rowN * colN, rowN * colN))
     for row in range(rowN):
         for col in range(colN):
             for rowDiff in range(-e, e + 1, 1):

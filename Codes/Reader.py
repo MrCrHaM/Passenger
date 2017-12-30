@@ -3,7 +3,10 @@
 """
 Created on Tue Jul 18 14:34:06 2017
 
-@author: litaochen
+Module for reading Passenger screening dataset.
+Adapted from Kevin Mader's kernel at https://www.kaggle.com/kmader/reading-and-organizing-images-and-outputs
+A description of the dataset specifics can be found at https://www.kaggle.com/c/passenger-screening-algorithm-challenge/data
+
 """
 
 import numpy as np
