@@ -1,0 +1,5 @@
+L is chosen to be 2500 for seed in  threat
+Score for seed in  threat is 47.65544
+
+L is chosen to be 3500 for seed out threat
+Score for seed out threat is 96.64295
