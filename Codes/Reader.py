@@ -9,7 +9,7 @@ A description of the dataset specifics can be found at https://www.kaggle.com/c/
 
 """
 
-import numpy as np
+import numpy as np	
 import os
 import matplotlib
 import matplotlib.pyplot as plt
