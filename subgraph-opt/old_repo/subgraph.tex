@@ -1,0 +1,411 @@
+\documentclass{article}
+\usepackage{amsthm,amsmath,amssymb,graphicx,amsfonts,epsfig,array,url,cite,wrapfig,epstopdf, verbatim, bm}
+\usepackage[center,footnotesize]{caption}
+\usepackage[textsize=small]{todonotes}
+%\interdisplaylinepenalty=2500
+%\usepackage{fullpage}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{corollary}{Corollary}[section]
+\newtheorem{definition}{Definition}[section]
+\newtheorem{remark}{Remark}[section]
+
+
+\newcommand{\Remark}[1]{\todo[inline,backgroundcolor=blue!20!white]{Remark: #1}}
+
+\DeclareMathOperator{\Tr}{Tr}
+\DeclareMathOperator{\Prox}{Prox}
+
+\begin{document}
+
+\title{Optimizing the graph scan statistics under connectivity constraints}
+\author{\vspace{-10pt}}
+
+\maketitle
+
+\section{Preliminaries}
+
+Let $G = (V,E)$ denote our underlying undirected unweighted graph with $n$ nodes and let $w_{ij} = 1$ if $(i,j) \in E$ and zero otherwise. Denote the $n \times n$ edge Laplacian matrix as $L_{ij} = e_{ii} + e_{jj} - e_{ij} - e_{ji}$ for two nodes $i$ and $j$, where $e_{ij}$ is a zero matrix with a one in index $i,j$. Let $A \cdot B = \Tr(A B)$ denote the inner product in the space of symmetric PSD matrices. Let $G_S = (S, E_S)$ define the subgraph induced by the subset $S \subseteq V$ in  graph $G$.
+
+
+\section{Problem Definition}
+
+Let $c \in \mathbb{R}^n$ be an input {\it weight vector} assigning a value to each vertex in $V.$
+For a connected subset $S \subseteq V,$ we define the scan statistic with respect to the weight vector $c$ as:
+$$
+\rho_c (S) = \frac{\sum_{i \in S} c_i}{\sqrt{|S|}}.
+$$
+For much of this work, we will work with the square of this quantity, which we denote as follows:
+$$
+\rho^2_c(S) = \frac{\left(\sum_{i \in S} c_i\right)^2}{|S|}.
+$$
+Our goal will be to maximize the scan statistic under two kind of connectivity constraints. For the rooted problem, we will over all connected subsets $S$ of $G$. Formally:
+\begin{equation}\label{eq:original_S}
+  \max_{S \subset V: G_S \text{ connected}} \rho^2_c(S).
+\end{equation}
+
+We assume the following:
+\begin{enumerate}
+\item The weight vector c is non-negative,
+\item For each vertex $i$ such that $c_i = 0,$ there exists a vertex $u$ with $c_u >0$, such that there is a path in $G$ between $i$ and $u.$  This is without loss of generality as 0-weight disconnected components can be removed from the instance without changing the objective. 
+\end{enumerate}
+
+% q regarding statistical test
+%unconstrained version, connection to densest subgraph
+
+\section{IP Formulation and SDP Relaxation}
+
+Defining indicator vector $u \in \{0,1\}^n$ such that $u_i = 1_{\{i \in S\}}$, the above problem can be written as the following quadratic IP
+%\begin{equation}\label{eq:original_u}
+%  \max_{u \in \{0,1\}^n, G_{\{i: u_i = 1\}} \text{ connected}} \frac{\sum_{i} c_i u_i}#%{\sqrt{\sum_i u_i}},
+%\end{equation}
+%and squaring the objective function and noting $u_i^2 = u_i$ we have
+\begin{equation}\label{eq:original_u2}
+  \max_{u \in \{0,1\}^n, G_{\{i: u_i = 1\}} \text{ connected}} \frac{\sum_{i,j} c_i c_j u_i u_j}{\sum_i u_i^2}.
+\end{equation}
+
+We relax this IP to a semidefinite program by turning each element $u_i$ to a vector $v_i \in {\cal V}$ such that scalar multiplication is transformed to inner product and we have $\langle v_i, v_j \rangle = 1$ if $i,j \in S$ and zero otherwise. We then have
+\begin{equation}\label{eq:original_v}
+  \max_{v_i \in {\cal V}, G_{\{i: |v_i| > 0\}} \text{ connected}} \frac{\sum_{i,j} c_i c_j \langle v_i, v_j \rangle}{\sum_i |v_i|^2}.
+\end{equation}
+%
+We can now use the Gram matrix $M = V^T V \succeq 0$ instead of $v_i$'s and write
+\begin{equation}\label{eq:M}
+  \max_{M \succeq 0, G_{\{i: |M_{ii}| > 0\}} \text{ connected}} \frac{cc^T \cdot M}{I \cdot M},
+\end{equation}
+where $C = c c^T$. 
+
+\subsection{Connectivity Constraint}
+
+We relax the non-convex connectivity constraint by imposing an effective resistance-related constraint on the subgraph selected by $M$. The concept of effective resistance originates from an electrical network view on graphs with resistance values on each edge given by $r_{ij} = \frac{1}{w_{ij}}$. Define the pseudoinverse of the Laplacian $L^+ = \sum_{i=2}^n \frac{1}{\lambda_i} u_i u_i^T$ where $L = \sum_{i=2}^n \lambda_i u_i u_i^T$. Also let $L_M = \sum_{(i,j) \in E} M_{ij} L_{ij}$ denote the Laplacian of the subgraph with adjacency matrix $A \odot M$ ($\odot$ is the elementwise/Hadamard matrix product) and $L^+_M$ denote its pseudoinverse. Note that $L_M$ corresponds to the graph where edge weights are given by $M_{ij}$.  %mposing the following constraint on $M$ for a small margin $\gamma > 0$ and a non-negative variable $r$:
+
+Defining a vector of directional current flows in/out to nodes with $f$ (e.g.\ where positive elements are currents into the node and vice versa), the relationship between the vector of voltages $v$ and $f$ in an electrical circuit graph with resistances $r_{ij}$ are given by the relation $v = L^+ f$. This fact follows from Kirchoff's current and voltage laws (an initial reference: \url{http://www.stat.berkeley.edu/~mmahoney/s15-stat260-cs294/Lectures/lecture16-17mar15.pdf} to be replaced). The effective resistance $R_{ab}$ between any two nodes $a, b$ is then defined by the voltage difference $v_a - v_b = v^T (e_a - e_b)$ when unit current is flowing between two nodes such that $f = e_a - e_b$ (or equivalently, inverse of the current flow with unit voltage difference between $a$ and $b$). We then have the identity $R_{ab} = (e_a - e_b)^T v = (e_a - e_b)^T L^+ (e_a - e_b)$.
+
+Given a root/anchor node $r \in V$ that is assumed to be contained in the subgraph $S$, consider the case where a current flow of $M_{ii}$ is present between $r$ and $i \in V$ on the induced graph with Laplacian $L_M$. Letting $m_i = M_{ii} (e_r - e_i)$, the voltage vector $v_i$ corresponding to these inputs is given by $v_i = L_M^+ m_i$.\footnote{Note that the input currents scaling with $M_{ii}$ also serves to cancel the effect of the scaling of $M$ in $L_M^+$.} We can then consider a superposition of $n-1$ such current inputs for $i \in V, i \neq r$, which results in a current flow vector $m \triangleq \sum_{i \neq r} m_i$. This vector $m$ is equal to $-\operatorname{diag}(M)$ except at $r$ where $m(r) = \sum_{i \neq r} M_{ii}$ and results in the voltage vector $v = L_M^+ m$.
+
+Finally, instead of taking the voltage difference for a pair $(r, i)$, we can consider a convex combination of the voltage differences between $r$ and other nodes in the subgraph, and thus define an effective resistance for the induced graph. To this effect and to obtain a symmetric formulation, consider $R_M \triangleq m^T v = m^T L_M^+ m$, where we note that $m^T 1 = 0$.\footnote{Note that this is a multi-terminal definition between $r$ and other nodes and does not seem to correspond to a proper definition.} Considering this combination of voltages and input currents that are dependent on $\operatorname{diag}(M)$ also serves to restrict our interest to only the nodes selected by $M$. We can now upper bound this resistance $R_M \leq \frac{1}{\gamma}$ to enforce an internal connectivity on the induced subgraph, with larger $\gamma$ enforcing more connectivity.
+
+
+%$$
+%\sum_{\{i,j\} \in E} M_{ij} L_{ij} + r 11^T \succeq \gamma \cdot \operatorname{diag}(M).
+%$$
+%The $r$-term ensures that we only enforce the SDP constraint for vectors orthogonal to the all-1 vector. This enables us to use the diagonal of $M$ on the righthand side, rather than some notion of complete graph over the support of $M.$
+
+Because the original integer variables are ${0,1}$-valued, we also ask that $M$ be entrywise non-negative\footnote{If we don't have such a constraint, it seems like a SDP solution may pick out disconnected components by giving positive values to one component and negative value to the other. This may complicate the iterative scheme, as we have to keep around these new $n^2$ constraints. We will later show that the iterative updates implicitly result in nonnegative matrices without such an explicit constraint.}, i.e., $M \geq 0.$
+%Espress connectivity constraint in IP
+
+%Given a symmetric PSD matrix $M \in \mathbb{R}^{n \times n}$, $M \succeq 0$, we write
+%\[ Q(M) = \sum_{i,j} (w_{ij} - \gamma) M_{ij} L_{ij} \succeq 0 \]
+%as a constraint on the $\gamma$-connectivity of the subgraph induced by $M$ (e.g.\ if $M = u u^T = 1_S 1_S^T$ for subgraph $S$) on underlying graph $G$. (To do: include Theorem 3 in \cite{nips} for the integer problem.)
+
+Because of the homogeneity of the objective, we can fix the scale $I \cdot M = 1$ and finally consider the following relaxed optimization problem \eqref{eq:M}:
+\begin{equation}\label{eq:opt}
+  \max_{M \in \Delta^{\geq 0}_n} \quad cc^T \cdot M \quad \mathrm{s.t.\ } m^T L_M^+ m \leq \frac{1}{\gamma},
+\end{equation}
+where $\Delta^{\geq 0}_n = \{X \in \mathbb{R}^{n \times n} : X \succeq 0, X \geq 0, \Tr(X) = I_n \cdot X = 1 \}$ denotes the ``spectrahedron'' of $n \times n$ symmetric PSD matrices with unit trace. Note that unlike the objective, the constraint $m^T L_M^+ m$ depends on the scaling of $M$ thus the choice of $\gamma$ may be affected by the fixing of the trace to 1.
+
+
+\begin{comment}
+
+\section{Dual SDP Program and its Interpretation}
+
+To write the dual of the program in Equation~\ref{eq:opt}, it is more convenient to express the connectivity constraint using tensor products:
+$$
+\sum_{\{i,j\} \in E} (L_{ij} \otimes e_{ij}) M +  r 11^T \succeq \gamma \cdot \operatorname I \otimes M.
+$$
+It is then easy to see that the dual problem takes the following form:
+$$
+\min_{\begin{subarray}{c} Y \succeq 0, Y \cdot 11^T = 0 \\\ Z \geq 0\end{subarray}} \alpha \quad \mathrm{s.t.} \quad cc^T + \sum_{\{i,j\} \in E} (Y \cdot L_{ij}) e_{ij} + Z \preceq \alpha I + \gamma \operatorname{diag}(Y).
+$$
+The psd matrix $Y$ can be thought of as representing a vector embedding of $G.$ 
+This embedding determines a system of penalties and gains associated with the nodes and the edges of $G.$ In particular, the edges of $G$ take on a gain equal to their length in $Y$, while the nodes take on a penalty of $\gamma$ times the norm of their associated vertex in $Y.$
+
+The dual variable $Z$ must be included to enforce the non-negativity of the primal. We will exploit the structure of the problem to argue that $Z$ can be set to $0$ through our iterative scheme.
+This is achieved by noticing that the lefthand side of the SDP constraint (excluding $Z$) is a non-negative matrix (as $c \geq 0$). Hence, its maximum eigenvector with respect to the inner product defined by the righthand side) is non-negative (by Perron-Frobenius). This means that we can update the current $Y_t$ by taking the top eigenvector $M_t$ of the SDP constraint while assuring that $M_t \geq 0.$ Hence, the latter constraint does not need to be dualized.
+%\Remark{Just to follow up on Lorenzo's argument, for any element-wise non-negative symmetric matrix $A\geq 0$, the top eigenvector is always non-negative by Perron-Frobenius. Furthermore, it seems the following is true (by computer simulation): the top eigenvector of $A-D$ remains non-negative for arbitrary diagonal matrix $D$. This is quite surprising (and useful in our context because we can drop the Z $\geq 0$ constraint). So this is saying the diagonal elements don't matter to ensure non-negative top eigenvector? }
+
+% range of Y
+% fix symmetry issue.
+
+\section{SDP Formulation with Violations}
+
+To facilitate the construction of our iterative method, we modify our original SDP by adding the violation variables $s \geq 0.$ We write, for some fixed penalty value $p \geq 0$:
+\begin{equation}\label{eq:opt_v}
+  \max_{M \in \Delta^{\geq 0}_n} \quad cc^T \cdot M - p s \quad \mathrm{s.t.\ } \sum_{\{i,j\} \in E} M_{ij} L_{ij} + r 11^T + s I \succeq \gamma \operatorname{diag}(M)
+\end{equation}
+The term $s I$ provides a measure of how violated the SDP constraint is. If $s \geq \gamma$, it is possible to prove that the SDP constraint is trivially satisfied for any $M$ in $\Delta^{\geq 0}_n$ at a cost of $p s$ in the objective. To avoid such trivial solutions, we set $p \geq \frac{2 \cdot \textrm{OPT}}{\gamma}$. This means that in a solution with non-negative cost, $s$ can be at most $\frac{\gamma}{2}.$ Introducing the violation term $s I$ yields the constraint $I \cdot Y = 1$ in the dual, which allows us to run mirror descent on the dual side by updating the $Y$ variables.
+
+The new dual program is:
+$$
+\min_{\begin{subarray}{c} Y \succeq 0 \\ 11^T \cdot Y = 0, I \cdot Y=p \\ \alpha, Z \geq 0 \end{subarray}} \alpha \quad \mathrm{s.t.} \quad cc^T + \sum_{\{i,j\} \in E} (Y \cdot L_{ij}) e_{ij} + Z \preceq \alpha I + \gamma \operatorname{diag}(Y).
+$$
+
+
+\subsection{Additional constraints}
+
+We can also consider additional constraints that tighten the relaxation w.r.t.\ the integer problem. The first constraint we consider is an element-wise nonnegativity constraint $M \geq 0$ to help with the connectivity constraint. If we don't have such a constraint, it seems like a SDP solution may pick out disconnected components by giving positive values to one component and negative value to the other. This may complicate the iterative scheme, as we have to keep around these new $n^2$ constraints.
+%
+
+Secondly, note that ideally, we have $M = u u^\prime$, where $u \in \{0,1\}^n$ is $K$-sparse. Note that this implies
+\[ \left( \sum_i u_i \right)^2 \leq K \left( \sum_i u_i^2 \right), \]
+which can be seen easily by induction over $K$. Expanding above inequality, we have
+\[ \sum_{i,j} u_i u_j \leq K \sum_i u_i^2. \]
+This in turn corresponds to the following constraint on $M$
+\[ \sum_{i,j} M_{ij} \leq K \sum_i M_{ii}, \]
+and considering that we have $\Tr(M) = 1$, this is equivalent to $J \cdot M \leq K$, where $J \triangleq 1_n 1_n^\prime$. Then a new formulation with the additional constraints is
+\begin{align}\label{eq:opt_add}
+  \max_{M \in \Delta_n} \quad C \cdot M \quad \mathrm{s.t.\ } \quad & Q(M) \succeq 0, \quad M \geq 0, \quad J \cdot M \geq 0.
+\end{align}
+
+\end{comment}
+
+
+
+\section{Non-smooth optimization with mirror descent}
+
+Mirror descent is an optimization procedure that generalizes subgradient methods to non-Euclidean spaces (see section 5.3 of \cite{lectures} or \cite{blog}). For an optimization problem $\min_{x \in X} f(x)$, it tries to minimize the local linearization of the function while trying to stay close to the previous point using  differentiable mirror map function $\omega(\cdot)$ to measure locality. This function must be 1-strongly convex with respect to a norm $||\cdot||$.
+
+Mirror descent is given by the recurrence
+\[ x_0 = \arg\min_{x \in X} \omega(x), \quad x_{t+1} = \Prox_{x_t}(\gamma_t f'(x_t)), \]
+where $f'(x_t)$ is a subgradient of $f$ at $x_t$, $\gamma_t$ are step sizes and the proximity operator is defined as
+\[ \Prox_{x}(\psi ) = \arg\min_{y \in X} \, \omega(y) + \langle \psi - \omega'(x), y \rangle. \]
+This proximity operator aims to move in the negative direction to $\psi$, while staying close to the original point $x$.
+
+With the above steps, letting $x^T = \frac{\sum_{t=1}^T \gamma_t x_t}{\sum_{t=1}^T \gamma_t}$ and choosing step sizes appropriately, it is shown in Theorem 5.3.1 of \cite{lectures} that
+\[ f(x^T) - \min_{x \in X} f(x) \leq \frac{\Omega L(f)}{\sqrt{T}}, \]
+where $L(f)$ is the Lipschitz constant of $f$ w.r.t. the considered norm in $X$ and $\Omega$ is related to the radius of $X$ w.r.t.\ $\omega(\cdot)$ (e.g.\ $\Omega \leq \sqrt{2 (\max \omega(\cdot) - \min \omega(\cdot))}$).
+
+
+In the spectrahedron setup (for minimization $\min_{x \in \Delta_n} f(x)$), we will use the negative von Neumann entropy of a matrix, $\omega(x) = \sum_{i=1}^n \lambda_i \log \lambda_i$ as the mirror map, where $\lambda_i$ are the eigenvalues of $x$. Notice that this map is $1$-strongly convex with respect to the $\ell_1$ norm of the eigenvalues, i.e., to the matrix trace norm. Working out the proximal mapping, this gives us the following multiplicative update rule (see part 2 of \cite{blog}):
+\begin{equation}\label{eq:expUpdate}
+  M_{t+1} \propto \exp \left( \log M_t - \gamma_t f'(M_t) \right),
+\end{equation}
+with matrix exponential and logarithm, $M_0 = \frac{1}{n} I_n$ and the right-hand side is normalized to unit trace to obtain $M_{t+1}$. $L(f)$ is the Lipschitz constant of $f$ w.r.t.\ the matrix trace norm. We can also show that $\Omega = O(\sqrt{\log n})$.
+
+Note that \eqref{eq:expUpdate} is written for the general minimization problem, while we consider the maximization problem, so our update step would instead be
+\[ M_{t+1} \propto \exp \left( \sum_{\tau=1}^t \alpha_\tau f'(M_\tau) \right) \]
+for some weights $\alpha_\tau$, where we also unrolled the recursion.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Mirror Descent on Primal}
+
+%Define:
+%\[ P(Y,\alpha) = cc^T + \sum_{\{i,j\} \in E} (Y \cdot L_{ij}) e_{ij} - \alpha I - \gamma \operatorname{diag}(Y). \]
+
+We consider the following Lagrangian formulation of our SDP relaxation in \eqref{eq:opt} (where $h(x)$ is the hinge function such that $h(x) = x$ for $x \geq 0$ and zero otherwise):
+\begin{align}\label{eq:opt2}
+  \max_{M \in \Delta^{\geq 0}_n} f(M), \quad f(M) = cc^T \cdot M - h\left(y \, m^T L_M^+ m - \frac{1}{\gamma} \right),
+\end{align}
+for a Lagrange multiplier $y$ corresponding to the connectivity constraint.
+The hinge function allows us to not penalize if the constraint is already satisfied.
+%Note that $f(M) = C \cdot M$ if $Q(M) \succeq 0$. We do not consider the additional constraints in this section yet. 
+%TODO: formalize and state the gradient and updates for the additional constraints. Can do Lagrangian without the hinge.
+
+
+We need to compute subgradients of $f(M)$ as formulated in \eqref{eq:opt2} in order to compute mirror descent updates as stated above. We first state Danskin's Theorem \cite{danskin} that considers saddle problems of the form \eqref{eq:opt2}.
+
+First, we observe that when the connectivity constraint is satisfied, the gradient is given by $\nabla_M f(M) = C = c c^T$. Next, we compute the gradient of $m^T L_M^+ m$ w.r.t.~$M$. We note that $m^T L_M^+ m = m m^T \cdot L_M^+$ and proceed to compute the gradients of the two parts separately. 
+
+For $m m^T$, we note that it is independent of non-diagonal elements of $M$. Thus $\nabla_{M_{ij}} m m^T = 0$ for all $i \neq j$. For the diagonal elements we can use the chain rule and write
+\[ \nabla_{M_{ii}} m m^T = 2 (\nabla_{M_{ii}} m) m^T = 2 (e_r - e_i) m^T,\]
+which follows from the definition of the vector $m$.
+
+Similarly, we note that $L_M$ and thus $L_M^+$ is independent of the diagonal elements of $M$, thus $\nabla_{M_{ii}} L_M^+ = 0$ for all $i = 1,\ldots,n$. The derivative of a matrix inverse is given by
+\[ \nabla_{M_{ij}} L_M^+ = - L_M^+ \nabla_{M_{ij}} L_M L_M^+ = - L_M^+ L_{ij} L_M^+. \]
+
+Since the two terms depend either on diagonal or nondiagonal elements, the chain rule neatly simplifies for both cases. For the diagonal elements, we have that 
+\[ \nabla_{M_{ii}} m m^T \cdot L_M^+ = \left(\nabla_{M_{ii}} m m^T\right) \cdot L_M^+ = 2 (e_r - e_i) L_M^+ m = 2(v_r - v_i). \]
+On the other hand, for the nondiagonal elements we can write
+\begin{align*}
+  \nabla_{M_{ij}} m m^T \cdot L_M^+ & = \left(\nabla_{M_{ij}} L_M^+\right) \cdot m m^T = - m^T L_M^+ L_{ij} L_M^+ m \\
+  & = -(L_M^+ m)^T (e_i - e_j) (e_i - e_j)^T (L_M^+ m) = -(v_i - v_j)^2.
+\end{align*}
+
+The final expression we obtain for the gradient is then given by
+\[ \nabla_M m^T L_M^+ m = 2 \operatorname{diag}(v_r \bm{1} - v) - V, \]
+with matrix $V$ defined by $V_{ij} = (v_i - v_j)^2$.
+
+Then we have
+\[ \nabla_M f(M) = \begin{cases}
+     C, \quad m^T L_M^+ m \leq \frac{1}{\gamma} \\
+     C - y \left( 2 \operatorname{diag}(v_r \bm{1} - v) - V \right), \quad \mathrm{ o.w.}.
+\end{cases} 
+\]
+
+Some remarks:
+\begin{itemize}
+  \item Currently we use mirror descent with gradients given by $\nabla f(M)$ as above for a given $y$ heuristically set to $\frac{\|C\|}{\lambda_{\max} (2 \operatorname{diag}(v_r \bm{1} - v) - V)}$, on the spectrahedron $\Delta_n$. This is given by the formula
+    \[ M^{t+1} \propto \exp\left( \eta \sum_{\tau = 1}^t \nabla f(M^\tau) \right). \]
+  \item We ignore the nonnegativity constraint $M \geq 0$, but this seems to be satisfied automatically with the gradient updates. We initalize with $M^0 = \frac{1}{n} \bm{1} \bm{1}^T$ that corresponds to the whole graph.
+  \item We have some numerical problems in the exponential update, since the gradient can have large values that blow up with the matrix exponential before we are able to project back to unit trace spectrahedron. To improve the numeric stability we thus subtract $\lambda_{\max} (\nabla f(M)) I_n$ from the gradient before exponentiating. This theoretically does not affect the result because of the trace normalization.
+  \item The $\eta$ value we use is currently 10.
+  \item One immediate improvement for computation is to use Johnson-Lindenstrauss lemma to work with the projection to $\log n$ dimensions, instead of the full matrix. This can be achieved by replacing the matrix exponential with more computationally efficient exponent routine $\operatorname{expv}$ that includes the projection.
+\end{itemize}
+
+\begin{comment}
+\begin{theorem}[Danskin's Theorem]
+  Let $f(x) = \max_z \phi(x,z)$, where $\phi(\cdot,z)$ is a convex function for all $z$. Define $Z_0(x) = \{z' : \phi(x,z') = \max_z \phi(x,z)\}$ to be the set of maximizers $z$ given a point $x$. Then, under certain regularity conditions the subdifferential of $f$ at $x$ is given by
+  \[ \partial f(x) = \mathrm{conv}\left\{ \partial \phi(x,z) : z \in Z_0(x)\right\}. \]
+\end{theorem}
+
+This way we see that for a given $(Y, \alpha, Z)$, by finding a maxmimizer $M$ of the hinge  $h(M \cdot P(Y,\alpha,Z))$ we can obtain a subgradient for $g$ at $(Y,\alpha, Z).$ In particular, we have:
+\[ 
+\nabla_Y M \cdot P(Y,\alpha,Z)= \sum_{ij \in E} M_{ij} L_{ij} - \gamma I, \quad
+\nabla_\alpha M \cdot P(Y, \alpha, Z) = - M \cdot I.
+\]
+Therefore we can write the following expression for the subgradient of $g$ at $Y,\alpha$.
+\[ \partial g(Y,\alpha) = \begin{cases}
+			\{(0, 1, 0)\}, \quad P(Y,\alpha) \preceq 0 \\
+			\mathrm{conv}\left\{\left(\sum_{ij \in E} M_{ij} L_{ij} - \gamma I, 1 - M \cdot Y\right)  :
+			M \in \underset{\begin{subarray}{c} M' \geq 0,\\ M' \succeq 0,\\ I \cdot M' = 1\end{subarray}}{\arg \max} \{h(M' \cdot P(Y,\alpha)\} \right\}, \quad P(Y,\alpha) \not\preceq 0.
+			\end{cases} \]
+In words, any $M'$ which highlights a constraint broken by $Y$ is a valid subgradient.
+\end{comment}
+
+
+\begin{comment}
+\section{Mirror Descent on Primal}
+
+Consider a psd matrix $M.$ Define:
+$$
+Q(M) = \sum_{\{i,j\} \in E} M_{ij} L_{ij} - \gamma \sum_{i \in V, j \in V} M_{ij} L_{ij}.
+$$
+
+We consider the following Lagrangian formulation of our SDP relaxation (where $h(x)$ is the hinge function such that $h(x) = x$ for $x \geq 0$ and zero otherwise):
+\begin{align}\label{eq:opt2}
+  \max_{M \in \Delta^{\geq 0}_n} f(M),\quad f(M) =  C \cdot M + \min_{Y \succeq 0}  h(Y \cdot Q(M)).
+\end{align}
+Note that $f(M) = C \cdot M$ if $Q(M) \succeq 0$. We do not consider the additional constraints in this section yet. 
+%TODO: formalize and state the gradient and updates for the additional constraints. Can do Lagrangian without the hinge.
+
+
+We need to compute subgradients of $f(M)$ as formulated in \eqref{eq:opt2} in order to compute mirror descent updates as stated above. We first state Danskin's Theorem \cite{danskin} that considers saddle problems of the form \eqref{eq:opt2}.
+
+\begin{theorem}[Danskin's Theorem]
+  Let $f(x) = \max_z \phi(x,z)$, where $\phi(\cdot,z)$ is a convex function for all $z$. Define $Z_0(x) = \{z' : \phi(x,z') = \max_z \phi(x,z)\}$ to be the set of maximizers $z$ given a point $x$. Then, under certain regularity conditions the subdifferential of $f$ at $x$ is given by
+  \[ \partial f(x) = \mathrm{conv}\left\{ \partial \phi(x,z) : z \in Z_0(x)\right\}. \]
+\end{theorem}
+
+This way we see that for a given $M$, by finding a minimizer $Y$ of the hinge  $h(Y \cdot Q(M))$ we can obtain a subgradient for $f$ at $M$. In particular, we have:
+\[ \frac{\partial Q(M)}{\partial M_{ij}} = (w_{ij} - \gamma) L_{ij}, \quad \frac{\partial (Y \cdot Q(M))}{\partial M_{ij}} = (w_{ij} - \gamma) Y \cdot L_{ij}, \]
+Therefore we can write the following expression for the subgradient of $f$ at $M$.
+\[ \partial f(M) = \begin{cases}
+			\{C\}, \quad Q(M) \succeq 0 \\
+			\mathrm{conv}\left\{C + \sum_{i,j} (w_{ij} - \gamma) \left(Y \cdot L_{ij} \right) e_{ij} :
+			Y \in \arg\min_{Y' \succeq 0} \{h(Y' \cdot Q(M)\} \right\}, \quad Q(M) \not\succeq 0.
+			\end{cases} \]
+This can be further simplified by considering the definiton of the hinge function $h(\cdot).$
+In particular, we have:
+$$
+Y \in \arg\min_{Y' \succeq 0} \{h(Y' \cdot Q(M)\} = {Y' \succeq 0 : Q(M) \cdot Y' \leq 0.}.
+$$
+In words, any $Y'$ which highlights a constraint broken by $M$ is a valid subgradient.
+
+% \section{Some fixes to be included}
+% 
+% Here are a number of things that need to be modified or dealt with in the current approach. Feel free to add more:
+% \begin{enumerate}
+% \item Formulation of the relaxation: if the goal is to relax the objective: $\max_{S \textrm{connected}} \frac{\sum_{i \in S} c_i}{|S|^2}$, as it is in oneof the applications, then we probably need to do a binary search over the possible sizes of $S.$ The reason is that the constraint $I \cdot M = 1$ and the objective $C \cdot M = 1$ are homogeneous, so they are suitable for optimizing $\frac{\sum_{i \in S} c_i}{|S|},$ which is trivially optimal at the maximum valued vertex.
+% \item I am a bit worried about the constraint $Q(M) \succeq 0.$ It seems to me that it will work fine if we also impose $M_{ij} \geq 0$ for all $i,j.$  If we don't do this, it seems like a SDP solution may pick out disconnected components by giving positive values to one component and negative value to the other. This may complicate the iterative scheme, as we have to keep around these new $n^2$ constraints. Lorenzo will think more about this.
+% \end{enumerate}
+
+
+\section{Rounding}
+
+Instead of finding subgradients and solving mirror descent in the spectrahedron $\Delta_n$ to obtain a final $M^T$ and rounding that to a cut $S^T$ at the end of the algorithm, we may want to incorporate the rounding of the solution inside every iteration of the mirror descent algorithm. This might give us more intuitive iteration steps.
+
+In every iteration $t$, we would round the matrix $M_t$ to a cut $S_t$. We would then check whether $Q(S_t) \succeq 0$, if so, we would apply mirror descent with subgradient $C$ at $S_t$ to obtain $M_{t+1}$. If not, we would find a cut $Y$ such that $Y \cdot Q(S_t)$ is minimized, which we would intuitively expect to be the cut that cuts set $S_t$ with a value less than $\gamma$. We would then expect the mirror descent step that uses this $Y$ to give us a new iterate $M_{t+1}$ that has higher internal conductance by weighting the edges that are cut more.
+
+In order to do this rounding at every step, we need to come up with a rounding scheme to go from matrix $M_t$ to cut $S_t$, and also show that we can find a minimizer $Y$ through solving a cut problem to obtain a subgradient.
+
+Note that a simple rounding where $S = supp(diag(M))$ may not always be enough to give a connected solution. The reason for this can be that the solution $M$ is possibly a mixture of connected solutions, so the union is not necessarily connected.
+
+A better rounding strategy is random hyperplane rounding \cite{rounding}, where we do
+\[ w = M (v/\|v\|), \quad v \sim {\cal N}(0, I_n) \]
+for random unit vector $v$, possibly multiple times. Then we can threshold these $w$ to obtain multiple clusters, which we expect to be connected if the formulation is valid. For nodes $i$ that are not selected, we expect that $w_i \approx 0$. Relaxation and rounding leading to an approximately optimal solution for the problem in \eqref{eq:original_S} needs proof.
+
+
+
+\section{Other notes}
+
+\begin{itemize}
+  \item We may consider putting a slack term $Q(M) \succeq -\frac{\gamma}{2} I_n$ instead of $Q(M) \succeq 0$ in \eqref{eq:opt2}, which may lead to a better conditioning of the problem (?)
+  \item Another thing to try is defining $Q(M) = \sum_{i<j} (w_{ij} - \gamma) M_{ij}^2 L_{ij}$ where we squared $M$ elementwise. This might give a better relaxation w.r.t.\ the integer problem, but may not be convex (?)
+  \item We can also consider an objective with a smooth soft-min penalty instead of the constraint $Q(M) \succeq 0$ such that the objective is
+    \[ f(M) = C \cdot M - \frac{1}{t} \log \left( I \cdot e^{-t Q(M)} \right). \]
+    Writing $Q(M) = L \circ M$ where $\circ$ is the tensor-matrix product, we then have
+    \[ \nabla f(M) = \frac{L \circ e^{-t L \circ M}}{I \cdot e^{-t L \circ M}}, \]
+    for which the trace is 
+    \[ I \cdot \nabla f(M) = \frac{L \cdot e^{-t L \circ M}}{I \cdot e^{-t L \circ M}}, \]
+    which is similar to the Rayleigh quotient for $L$.
+\end{itemize}
+
+
+% For comparison purposes, in \cite{nips} the optimization formulation is
+% \begin{align*}
+%   \max_{M \text{ symmetric}} \quad C \cdot M \quad \mathrm{s.t.\ } \quad & Q(M) \succeq 0, \quad 1 \geq M \geq 0, \quad M_{pp} = 1 \\
+%   & M_{ij} \leq M_{ii} \; \forall i, j, \quad M_{ii} \leq M_{ip} \; \forall i, \quad I \cdot M \leq K
+% \end{align*}
+% so the PSD constraint is relaxed but box constraints are added along with anchor constraints for an anchor node $p$ and non-diagonal constraints (which is stronger than PSD).
+% 
+% (As an aside: It is stated in Theorem 3 in \cite{nips} that above constraints are satisfied for some $\gamma$ and anchor $p$ if and only if subgraph corresponding to $M$ ($S = supp(diag(M))$) is connected. It might be worthwhile to try to establish a if and only if relationship between the proposed formulation (without anchor nodes) and the condition stated in the Theorem, i.e.\ with our constraints, there exists some $p$ such that anchor constraints are satisfied and vice versa.)
+
+\end{comment}
+
+
+\bibliographystyle{plain}
+\begin{thebibliography}{9}
+
+\bibitem{lectures}
+  Aharon Ben-Tal and Arkadi Nemirovski,
+  \emph{Lectures on modern convex optimization},
+  \url{http://www2.isye.gatech.edu/~nemirovs/Lect_ModConvOpt.pdf}.
+
+\bibitem{blog}
+  Sebastian Bubeck,
+  \emph{Mirror descent},
+  \url{https://blogs.princeton.edu/imabandit/2013/04/16/orf523-mirror-descent-part-iii/}.
+
+\bibitem{danskin}
+  \emph{Danskin's theorem},
+  \url{http://en.wikipedia.org/wiki/Danskin\%27s_theorem}.
+
+\bibitem{nips}
+  Jing Qian, Venkatesh Saligrama
+  \emph{Efficient minimax signal detection on graphs},
+  \url{http://arxiv.org/abs/1411.6203}.
+
+\bibitem{rounding}
+  Jerome Le Ny,
+  \emph{Rounding techniques for semidefinite relaxations},
+  \url{http://www.professeurs.polymtl.ca/jerome.le-ny/docs/reports/SDProunding.pdf}.
+\end{thebibliography}
+
+
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

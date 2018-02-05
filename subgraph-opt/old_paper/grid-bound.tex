@@ -1,0 +1,106 @@
+\documentclass{article}
+%\usepackage{aistats2017}
+\usepackage{fullpage,appendix}
+\usepackage{amsthm,amsmath,amssymb,graphicx,amsfonts,epsfig,array,cite,wrapfig,epstopdf,verbatim,bm,epstopdf,subcaption}
+\usepackage[hyphens]{url}
+%\usepackage[hidelinks]{hyperref}
+%\hypersetup{breaklinks=true}
+\usepackage{algorithm,algorithmicx,algpseudocode}
+\usepackage{multirow}
+%\usepackage[center,footnotesize]{caption}
+%\usepackage[textsize=small]{todonotes}
+%\interdisplaylinepenalty=2500
+%\usepackage{fullpage}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{corollary}{Corollary}[section]
+\newtheorem{definition}{Definition}[section]
+\newtheorem{remark}{Remark}[section]
+
+\graphicspath{{figures/}}
+
+%\newcommand{\Remark}[1]{\todo[inline,backgroundcolor=blue!20!white]{Remark: #1}}
+
+\DeclareMathOperator{\Tr}{Tr}
+\DeclareMathOperator{\Prox}{Prox}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\Vol}{Vol}
+\DeclareMathOperator{\Star}{Star}
+\DeclareMathOperator{\argmin}{arg\,min}
+\DeclareMathOperator{\argmax}{arg\,max}
+
+\def \dx{\, \mathrm{d}}
+
+\algnewcommand\algorithmicinput{\textbf{Input:}}
+\algnewcommand\Input{\item[\algorithmicinput]}
+\algnewcommand\algorithmicoutput{\textbf{Output:}}
+\algnewcommand\Output{\item[\algorithmicoutput]}
+
+\title{Detection bound for grid graph}
+
+\begin{document}
+
+\maketitle
+
+We also provide a theorem for a 2-dimensional 4-connected grid graph that extends the line graph result.
+Note that below bound is possibly suboptimal, e.g.\ when compared to the bounds in \cite{nips14}. We nevertheless provide the theorem and its proof to be used as a starting point for improved/tighter analysis in the future.
+
+\begin{theorem}\label{thm:poisson_grid}
+  For a grid graph with dimensions $\sqrt{n} \times \sqrt{n}$ and subgraph dimensions $\Theta(\sqrt{K}) \times \Theta(\sqrt{K})$, the hypotheses $H_0$ and $H_1$ are asymptotically separable if $\mu = \Omega( \sqrt{\log K} \log^2 n )$ for $|S| = K$.
+\end{theorem}
+
+\begin{proof}
+  The proof follows along the lines of the proof of line graph theorem with a modified analysis to obtain an upper bound on $\alpha$. Let graph $G = (V, E)$ be a 4-connected grid of size $(a+1) \times (b+1)$ with total of $n = (a+1)(b+1)$ nodes where $a \leq b$. The root node $r$ is one of the corner nodes with coordinates $(0,0)$ w.l.o.g., as corner root node is provably the worst-case scenario.
+
+  Similar to the proof of the line graph, we construct a feasible solution for the dual with a vector $v$ assigning voltages to each node. We assign zero voltage to the root node and assign $v_i = d_i \Delta$ to each node, where $d_i$ is the shortest path distance of node $i$ to the root. For instance this leads to voltages $\Delta$ for nodes $\{(1,0), (0,1)\}$, $2 \Delta$ for $\{(2,0), (1,1), (0,2)\}$ and $a \Delta$, $b \Delta$, $(a+b) \Delta$ for corner nodes other than the root.
+
+  Similar to the line graph, we can write the constraint for the dual as
+  \[ x x^\top + \Delta^2 A_{grid} - \gamma \Delta^2 P \preceq \alpha I, \]
+  where the second term follows by noting that any two neighbors on the grid have voltage difference $\Delta$. Note that as before, we can upper bound $A_{grid}$ with the matrix $4 I$, since each node has at most degree 4. $P$ is a diagonal matrix with a special structure, which has the form
+  \[ P = \diag(p_1,\ldots,p_n) = \diag\left( 0, 1, 1, 2^2, 2^2, 2^2, \ldots, (a+b)^2 \right), \]
+  where each value $j^2$ for $j = 0, 1, \ldots, a+b$ is repeated $n_j = 1 + \min \{ j, a, a+b-j \}$ times.
+  Note that for this notation we enumerated each node on the grid starting from root node and proceeding along equal-distance pairs, i.e.\ following the sequence $((0,0), (1,0), (0,1), (0,2), (1,1), (2,0), \ldots, (a+1,b+1))$.
+
+  We next analyze the maximum eigenvalue $\lambda_{\max}$ of the matrix $x x^\top - \gamma \Delta^2 P$, from which it will then follow that $\alpha = 4 \Delta^2 + \lambda_{\max}$ will be a feasible solution. As before, we can utilize the identity
+  \[ f_\Delta(\lambda) = \sum_{i=1}^n \frac{x_i^2}{\lambda + \gamma \Delta^2 p_i} = 1, \]
+  which all eigenvalues $\lambda$ of the matrix must satisfy. Note that by upper bounding $x_i^2$ with $x_{\max}^2$ and using the specific form of $P$ we can write the chain of inequalities
+  \begin{align*}
+    f_\Delta(\lambda) & \leq \sum_{j=0}^{a+b} \frac{n_j x_{\max}^2}{\lambda + \gamma \Delta^2 j^2} \\
+    & = \sum_{j=0}^{a} \frac{(j+1) x_{\max}^2}{\lambda + \gamma \Delta^2 j^2} + \sum_{j=a+1}^b \frac{(a+1) x_{\max}^2}{\lambda + \gamma \Delta^2 j^2} + \sum_{j=b+1}^{a+b} \frac{(a+b-j+1) x_{\max}^2}{\lambda + \gamma \Delta^2 j^2} \\
+    & \leq \sum_{j=0}^{a} \frac{(j+1) x_{\max}^2}{\lambda + \gamma \Delta^2 j^2} + (a+1) \sum_{j=a+1}^{a+b} \frac{x_{\max}^2}{\lambda + \gamma \Delta^2 j^2} \triangleq T_1 + T_2.
+  \end{align*}
+
+  We first upper bound the second term,
+  \begin{align*}
+    T_2 &\leq \frac{(a+1) x_{\max}^2}{\gamma \Delta^2} \int_{a+1}^{a+b+1} \frac{1}{\lambda_\Delta + x^2} \dx x \\
+    & = \frac{(a+1) x_{\max}^2}{\gamma \Delta^2} \frac{\arctan\left(\frac{a+b+1}{\sqrt{\lambda_\Delta}}\right) - \arctan\left(\frac{a+1}{\sqrt{\lambda_\Delta}}\right)}{\sqrt{\lambda_\Delta}} \\
+    & = \frac{(a+1) x_{\max}^2}{\gamma \Delta^2} \left( \frac{1}{a+1} - \frac{1}{a+b+1}+ O\left(\frac{\sqrt{\lambda_\Delta}}{(a+b+1)^2}\right) - O\left(\frac{\sqrt{\lambda_\Delta}}{(a+1)^2}\right) \right) \\
+    & \leq \frac{x_{\max}^2}{\gamma \Delta^2} (1 + o(1)),
+  \end{align*}
+  where we defined $\lambda_\Delta = \frac{\lambda}{\gamma \Delta^2}$ as before and the last equality follows from the Taylor expansion of $\arctan$ if $(a+1)/\sqrt{\lambda_\Delta} \to \infty$, which we will ensure later on.
+
+  Next we consider the first term, for which we can write
+  \begin{align*}
+    T_1 & \leq \frac{x_{\max}^2}{\gamma \Delta^2} \left( \int_0^{a+1} \frac{1}{\lambda_\Delta + x^2} \dx x + \int_0^{a+1} \frac{x}{\lambda_\Delta + x^2} \dx x \right) \\
+    & = \frac{x_{\max}^2}{\gamma \Delta^2} \left( \frac{\arctan\left(\frac{a+1}{\sqrt{\lambda_\Delta}} \right)}{\sqrt{\lambda_\Delta}} + \frac{1}{2} \log \left( 1 + \frac{(a+1)^2}{\lambda_\Delta} \right) \right) \\
+    & \leq \frac{\bar{x}^2 \log^2 n}{\gamma \Delta^2} \left( \frac{\pi}{2 \sqrt{\lambda_\Delta}} + \frac{1}{2} \log \left( 1 + \frac{(a+1)^2}{\lambda_\Delta} \right) \right),
+  \end{align*}
+  where we assumed $x_{\max}^2 \leq \bar{x}^2 \log^2 n$.
+
+  Let $\Delta^2 = \frac{\bar{x}^2 \log^3 n}{\gamma}$ and $\lambda_0 = \frac{\gamma \Delta^2}{\log K}$. First notice that for $\lambda_\Delta$ corresponding to $\lambda_0$ we have that $\lambda_\Delta = \frac{1}{\log K}$ and consequently $\frac{a+1}{\sqrt{\lambda_\Delta}} \to \infty$ for any $a$. Using the above bounds for $T_1$ and $T_2$, we also have the upper bound
+  \begin{align*}
+    f_\Delta(\lambda_0) & \leq \frac{\bar{x}^2 \log^2 n}{\gamma \Delta^2} \left( 1 + o(1) + \frac{\pi}{2 \sqrt{\lambda_\Delta}} + \frac{1}{2} \log \left( 1 + \frac{(a+1)^2}{\lambda_\Delta} \right) \right) \\
+    & = \frac{1}{\log n} \left( 1 + o(1) + \frac{\pi}{2} \sqrt{\log K} + \frac{1}{2} \log \left( 1 + (a+1)^2 \log K \right) \right) \\
+    & = \frac{1}{2} + o(1) < 1,
+  \end{align*}
+  where we also used the fact that $(a+1)^2 \leq n$ and thus $\log(1 + (a+1)^2 \log K) = O(\log n)$. Thus we can conclude that a feasible dual solution is
+  \[ \alpha = 4 \Delta^2 + \frac{\gamma \Delta^2}{\log K} = (4 + o(1)) \Delta^2 = (4 + o(1)) \frac{\bar{x}^2 \log^3 n}{\gamma}, \]
+  which follows from the fact that $\gamma = O(1)$.
+
+  Assuming that the shape of the subgraph is a square grid with dimensions $\sqrt{K} \times \sqrt{K}$, it follows from Lemma 8 in \cite{nips_supp} that $\gamma = \frac{2}{K \log K}$ leads to a primal feasible solution for $M_S = \frac{1}{K} 1_S 1_S^\top$. With this $\gamma$, the dual bound becomes $(8 + o(1)) \bar{x}^2 K \log K \log^3 n$, which asymptotically differs from our improved bound on $\alpha$ for the line graph by a factor of $\frac{\log^3 n}{\log K}$.
+\end{proof}
+
+We remark that part of the looseness ($\log K$ factor) comes from the bounding of $\gamma$ in Lemma 8. Another part ($\log^2 n$ factor) comes from $x_{\max}^2$, which was also present in the original line graph bound. It may be possible to improve this part using the scaling arguments presented in the previous subsection. The last extra scaling of $\log n$ can be possibly improved if $a = o(\sqrt{n})$, i.e.\ if the original grid graph has lower conductance. To see this, let $\Delta^2 = \frac{\bar{x}^2 \log^2 n \log(1 + (a+1)^2)}{\gamma}$ and $\lambda_0 = \gamma \Delta^2$ for simplicity ($(a+1)/\sqrt{\lambda_\Delta} \to \infty$ holds if $a = \omega(1)$). Then we can essentially replace the extra $\log n$ by $\log a$ instead.
+
+\end{document}
