@@ -13,12 +13,20 @@ c = (sparse(10 * L + eye(size(L, 1)))) \ proj1;
 gamma = 1;
 s = zeros(1, size(L, 1))';
 s(10) = 1;
-s = 4050;
+s = 2000;
 k = 1;
 
 u_s = starOpt_fast(A, inv(D)* c, gamma, s, k, max_iter);
 proj2 = normrnd(0,1,[max_iter,1]);
 
-v=u_s*proj2;
+v=u_s*proj;2
 r=reshape(v, sqrt(size(v,1)),sqrt(size(v,1)));
 image(1000 * r)
+
+image(img)
+hold on
+
+image(r)
+
+proj2 = normrnd(0,1,[max_iter,1]);
+
