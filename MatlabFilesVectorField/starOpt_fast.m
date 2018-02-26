@@ -22,6 +22,7 @@ y = y * sqrt( p / ( sum(sum( degs(:, ones(k,1)) .* (y.^2) )) ) );
 u_s = zeros(n, max_iter);
 grad = sparse(n, n);
 
+
 opts.issym = 1;
 opts.tol = 1/n;
 opts.p = 5;

@@ -1,12 +1,13 @@
-img = makeChessBoard(20, 10, 4);
+img = makeChessBoard(20, 10, 3);% makeChessBoard(20, 10, 4);
 image(img);
 colorbar;
 A = makeGrid(img);
 sigma = 5;
 e = 2;
 graph = fully_connected_e_neighbour_graph(img, sigma, e);
+A = graph; % Shouldn't we stick with graph or A?
 [L, D] = laplacian(graph);
-max_iter = 500;
+max_iter = 100;
 % inverse = inv(sparse(10 * L + eye(size(L, 1))));
 proj1 = normrnd(0,1,[size(A,1),1]);
 c = (sparse(10 * L + eye(size(L, 1)))) \ proj1;
