@@ -5,7 +5,6 @@ A = makeGrid(img);
 sigma = 5;
 e = 2;
 graph = fully_connected_e_neighbour_graph(img, sigma, e);
-A = graph; % Shouldn't we stick with graph or A?
 [L, D] = laplacian(graph);
 max_iter = 100;
 % inverse = inv(sparse(10 * L + eye(size(L, 1))));
