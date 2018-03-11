@@ -22,6 +22,9 @@ degs = sum(Adj)';
 % 
 % tic;
 
+%rng(4);
+%u = norminv(rand(n,1),0,1);
+
 %% method 2, iterate over edges
 [coords_i, coords_j] = ind2sub([n,n],find(triu(Adj)));
 xvals = zeros(length(coords_i),1);
@@ -45,5 +48,4 @@ starX(r,r) = sum(dX) - degs(r)*u(r)^2;
 
 Q = Q - gamma * starX;
 % toc
-
 % norm(Q1 - Q2, 'fro')

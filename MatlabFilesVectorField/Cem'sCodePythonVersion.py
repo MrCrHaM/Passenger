@@ -74,7 +74,6 @@ def makeGrid(img):
 
 
 def starOpt_fast(A, c, gamma, s, k, max_iter):
-
     n = A.shape[0]
     A = sp.csc_matrix(A)
 
@@ -86,7 +85,7 @@ def starOpt_fast(A, c, gamma, s, k, max_iter):
     degs = sp.csc_matrix(np.transpose(sp.csc_matrix.sum(A, 0)))
 
     eta = 5
-    p = 2 * (np.dot(np.transpose(c), c)) / gamma
+    p = 2 * np.trace(np.dot(np.transpose(c), c)) / gamma
 
     startTime = time.time()
     np.random.seed(2)
@@ -94,20 +93,21 @@ def starOpt_fast(A, c, gamma, s, k, max_iter):
     y = temp.copy()
     # y = np.random.normal(0, 1, (n, k))
 
-    normalisation = p / sp.coo_matrix.sum(sp.csc_matrix.multiply(degs, np.sum(np.square(y), axis=1).reshape((y.shape[0], 1))))
-    y = y * pow(normalisation[0][0], .5)
-    # y = temp.copy() * pow(normalisation[0][0], .5)
+    normalisation = p / sp.coo_matrix.sum(
+        sp.csc_matrix.multiply(degs, np.sum(np.square(y), axis=1).reshape((y.shape[0], 1))))
+    # y = y * pow(normalisation[0][0], .5)
+    y = y * pow(normalisation, .5)
 
     u_s = np.zeros((n, max_iter))
     grad = sp.csc_matrix(np.zeros((n, n)))
 
     for i in range(max_iter):
-        print('Iteration: ' + str(i+1))
+
+        print('Iteration: ' + str(i + 1))
         # if (i %  10 == 9):
         #    print("Iteration: " + str(i+1))
-        print('a')
         ydist = precomputeDists(tri_i, tri_j, mapping, y)
-        print('b')
+        timeN = time.time()
         mtxop = lambda x: cc_P_gamma_Y_mult(coords_i, coords_j, degs, c, y, gamma, s, x, ydist)
         LO = sp.linalg.LinearOperator((n, n), matvec=mtxop)
 
@@ -115,23 +115,27 @@ def starOpt_fast(A, c, gamma, s, k, max_iter):
             [vals, u] = sp.linalg.eigsh(LO, k=1, ncv=5, which='LA', maxiter=100, tol=1 / n)
         else:
             [vals, u] = sp.linalg.eigsh(LO, k=1, ncv=5, which='LA', v0=u_s[:, i - 1], maxiter=100, tol=1 / n)
-
+        print('eigsh    : ' + str(time.time() - timeN))
+        timeN = time.time()
         u_s[:, i] = u[:, 0]
 
         QX = Q_gamma_M(A, u, gamma, s)
-
+        print('Q_gamma_M: ' + str(time.time() - timeN))
+        timeN = time.time()
         # MWU for dual variable Y
         grad = grad - QX
+        np.random.seed(3 + i)
         temp = np.transpose(norm.ppf(np.random.rand(k, n)))
         # y = sp.linalg.expm_multiply(eta/2 * grad, np.random.normal(0, 1, (n, k)) / pow(k, .5))
         y = sp.linalg.expm_multiply(eta / 2 * grad, temp.copy() / pow(k, .5))
 
         # normalize such that y*y' has degree weighted trace p
 
-        normalisation = p / sp.coo_matrix.sum(sp.csc_matrix.multiply(degs, np.sum(np.square(y), axis=1).reshape((y.shape[0], 1))))
-        y = y * pow(normalisation[0][0], .5)
-        print('f')
-
+        normalisation = p / sp.coo_matrix.sum(
+            sp.csc_matrix.multiply(degs, np.sum(np.square(y), axis=1).reshape((y.shape[0], 1))))
+        # y = y * pow(normalisation[0][0], .5)
+        y = y * pow(normalisation, .5)
+        print('expm_mult: ' + str(time.time() - timeN))
 
     runningTime = (time.time() - startTime)
     print('Running time of this part is ' + str(runningTime) + ' seconds')
@@ -187,7 +191,8 @@ def cc_P_gamma_Y_mult(coords_i, coords_j, degs, c, y, gamma, r, x, ydist):
     sumRepmat = np.sum(elWiseMult, axis=1)
     sumRepmat = sumRepmat.reshape(len(sumRepmat), 1)
     x = x.reshape(len(x), 1)
-    v = np.dot(np.transpose(c), x) * c + vv - gamma * (sp.csc_matrix.multiply(sp.csc_matrix.multiply(degs, x), sumRepmat))
+    v = np.dot(c, np.dot(np.transpose(c), x)) + vv - gamma * (
+    sp.csc_matrix.multiply(sp.csc_matrix.multiply(degs, x), sumRepmat))
     return v
 
 
@@ -195,8 +200,8 @@ def Q_gamma_M(Adj, u, gamma, r):
     n = Adj.shape[0]
     degs = sp.csc_matrix(np.transpose(sp.csc_matrix.sum(Adj, axis=0)))
 
-    #np.random.seed(4)
-    #u = norm.ppf(np.random.rand(n, 1))
+    # np.random.seed(4)
+    # u = norm.ppf(np.random.rand(n, 1))
 
     [coords_i, coords_j, V] = sp.find(sp.triu(Adj))
     xvals = np.zeros((len(coords_i), 1))
@@ -214,12 +219,13 @@ def Q_gamma_M(Adj, u, gamma, r):
         np.concatenate((coords_i, np.array(range(n)))), np.concatenate((coords_j, np.array(range(n)))))))
     Q = Q + sp.csc_matrix.transpose(Q)
     dX = sp.csc_matrix.multiply(degs, sp.csc_matrix(np.square(u)))
-    starX = sp.diags(dX.toarray()[:, 0]).tolil()
+    starX = sp.csc_matrix(sp.diags(dX.toarray()[:, 0]))
     starX[r, :] = -sp.csc_matrix.transpose(dX)
     starX[:, r] = -dX
     starX[r, r] = np.array(sp.csc_matrix.sum(dX, 0))[0][0] - degs.toarray()[r - 1][0] * (u[r - 1][0] * u[r - 1][0])
     Q = Q - gamma * starX
     return Q
+
 
 img = makeChessBoard(20, 10, 3)
 A = makeGrid(img)
@@ -227,26 +233,48 @@ sigma = 5
 e = 2
 graph = fully_connected_e_neighbour_graph(img, sigma, e)
 [L, D] = laplacian(graph)
-max_iter = 50
+max_iter = 30
 inverse = sp.linalg.inv(10 * L + sp.csc_matrix(np.identity(graph.shape[0])))
 np.random.seed(1)
 # proj1 = np.random.normal(0,1,(A.shape[0],1))
-proj1 = norm.ppf(np.random.rand(A.shape[0], 1))
+d = 15
+proj1 = norm.ppf(np.random.rand(A.shape[0], d))
 c = inverse.dot(proj1)
-gamma = 1
-s = 4050
+gamma = .01
+rowN = int((img.shape[0] / 2))
+colN = int((img.shape[1] / 2))
+s = rowN * img.shape[1] + colN
 s = s - 1 # Python index starts from 0!
-k = 3
+k = 20
 c = (sp.linalg.inv(D)).dot(c)
 
 u_s = starOpt_fast(A, c, gamma, s, k, max_iter)
 
 # proj2 = np.random.normal(0, 1, (max_iter, 1))
-np.random.seed(3)
+np.random.seed(3 + max_iter)
 proj2 = norm.ppf(np.random.rand(max_iter, 1))
-v = np.dot(u_s, proj2)
+#v = np.dot(u_s, proj2)
+v = np.diag(np.dot(u_s, np.transpose(u_s)))
 sizeSqrt = int(pow(v.shape[0], .5))
 r = v.reshape((sizeSqrt, sizeSqrt))
 
-plt.imshow(1e3 * r)
+r = v.reshape((sizeSqrt, sizeSqrt)).copy()
+print(np.max(r))
+r[rowN][colN] = r[rowN][colN] / 2
+print(np.max(r))
+if(rowN != 0):
+    r[rowN - 1][colN] = r[rowN - 1][colN] / 2
+print(np.max(r))
+if(rowN != img.shape[0]):
+    r[rowN + 1][colN] = r[rowN + 1][colN] / 2
+print(np.max(r))
+if(colN != 0):
+    r[rowN][colN - 1] = r[rowN][colN - 1] / 2
+print(np.max(r))
+if(colN != img.shape[1]):
+    r[rowN][colN + 1] = r[rowN][colN + 1] / 2
+print(np.max(r))
+
+plt.imshow(r, cmap='hot')
+plt.colorbar()
 plt.show()

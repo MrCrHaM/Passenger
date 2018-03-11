@@ -21,6 +21,14 @@ assert(length(x) == n && size(y,1) == n);
 % end
 % v = v - gamma * (degs .* x .* sum((repmat(y(r,:), n, 1) - y).^2, 2));
 
+%rng(4);
+%x = norminv(rand(n,1),0,1);
+
 zz = ydist .* x(coords_j);
+
+
+
 vv = accumarray(coords_i, zz, [n 1]);
-v = (c'*x) * c + vv - gamma * (degs .* x .* sum((repmat(y(r,:), n, 1) - y).^2, 2));
+
+
+v = c*(c'*x)+ vv - gamma * (degs .* x .* sum((repmat(y(r,:), n, 1) - y).^2, 2));
