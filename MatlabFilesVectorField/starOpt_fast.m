@@ -15,7 +15,7 @@ eta = 5;
 p = 2*trace(c'*c)/gamma;
 % How do we modify here?
 
-tic
+
 % randomly init Y ~~ y y' and normalize weighted trace
 rng(2);
 temp = norminv(rand(n,k),0,1);
@@ -36,24 +36,31 @@ for i = 1:max_iter
     
     % define operator mtxop(x) = A*x for eigs(A)
     % where A = c*c' + P_gamma(Y)
+    disp('eigs');
+    tic
     ydist = precomputeDists(tri_i, tri_j, map, y);
     mtxop = @(x) cc_P_gamma_Y_mult(coords_i, coords_j, degs, ...
                                    c, y, gamma, s, x, ydist);
 
     [u, ~] = eigs(mtxop, n, 1, 'la', opts);
+    toc
     opts.v0 = u;
     u_s(:,i) = u;
-
+    disp('Q_gamma');
+    tic
     QX = Q_gamma_M(A, u, gamma, s);
-
+    toc
     % MWU for dual variable Y
     grad = grad - QX;
     rng(2 + i);
     temp = norminv(rand(n,k),0,1);
     % y = expleja(eta/2, grad, randn(n, k)/sqrt(k), [0, 1/n]);
+    disp('expleja');
+    tic
     y = expleja(eta/2, grad, temp / sqrt(k), [0, 1/n]);
    
     % normalize such that y*y' has degree weighted trace p
     y = y * sqrt( p / ( sum(sum( degs(:, ones(k, 1)) .* (y.^2) )) ) );
+    toc
 end
-toc
+

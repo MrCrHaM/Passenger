@@ -14,13 +14,17 @@ from scipy.sparse.linalg import bicgstab
 from scipy import sparse
 import numpy.matlib
 from scipy.stats import norm
+import numpy_groupies as npg
 
 
 def fully_connected_e_neighbour_graph(img, sigma, e):
     array = np.array(img)
     rowN = np.shape(array)[0]
     colN = np.shape(array)[1]
-    result = np.zeros((rowN * colN, rowN * colN))
+    # result = np.zeros((rowN * colN, rowN * colN))
+    valData = []
+    rowData = []
+    colData = []
     for row in range(rowN):
         for col in range(colN):
             for rowDiff in range(-e, e + 1, 1):
@@ -33,10 +37,14 @@ def fully_connected_e_neighbour_graph(img, sigma, e):
                             row2 = row + rowDiff
                             col2 = col + colDiff
                             weight = math.exp(- math.pow(img[row][col] - img[row2][col2], 2) / (2 * math.pow(sigma, 2)))
-                            result[row * colN + col][row2 * colN + col2] = weight
+                            valData.append(weight)
+                            rowData.append(row * colN + col)
+                            colData.append(row2 * colN + col2)
+                            # result[row * colN + col][row2 * colN + col2] = weight
     # Convert it to sparse matrix
     # TODO: Direct initialization as sparse matrix is better
-    return sp.csc_matrix(result)
+    # return sp.csc_matrix(result)
+    return sp.csc_matrix((valData, (rowData, colData)), shape=(rowN * colN, rowN * colN))
 
 
 def laplacian(graph):
@@ -180,12 +188,14 @@ def cc_P_gamma_Y_mult(coords_i, coords_j, degs, c, y, gamma, r, x, ydist):
     # x = norm.ppf(np.random.rand(n, 1))
 
     zz = np.multiply(ydist, x[coords_j].reshape(ydist.shape))
-
+    vv = npg.aggregate(coords_i, zz.ravel(), func='sum', fill_value=0)
+    vv = vv.reshape(len(vv), 1)
+    '''
     vv = np.zeros((n, 1))
 
     for i in range(len(coords_i)):
         vv[coords_i[i]][0] = vv[coords_i[i]][0] + zz[i]
-
+    '''
     repmatArr = np.matlib.repmat(y[r, :], n, 1) - y
     elWiseMult = np.multiply(repmatArr, repmatArr)
     sumRepmat = np.sum(elWiseMult, axis=1)
@@ -225,7 +235,6 @@ def Q_gamma_M(Adj, u, gamma, r):
     starX[r, r] = np.array(sp.csc_matrix.sum(dX, 0))[0][0] - degs.toarray()[r - 1][0] * (u[r - 1][0] * u[r - 1][0])
     Q = Q - gamma * starX
     return Q
-
 
 img = makeChessBoard(20, 10, 3)
 A = makeGrid(img)
